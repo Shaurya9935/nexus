@@ -9,12 +9,17 @@ const VALID_EXTENSIONS = new Set([".ts", ".tsx", ".css", ".js", ".jsx"]);
 // 2. components/connect/brand-icons.tsx - Official third-party brand logos (Google, Slack, Notion, Zoom, etc.)
 // 3. components/auth/icons.tsx - Official 4-color Google authentication logo
 // 4. components/inbox/email-body.tsx - Paper container with fixed white background for authentic email contrast
+// 5. lib/email-templates - Email templates for Resend (email clients do not support CSS variables)
 const ALLOWLIST_FILES = new Set([
   path.normalize("app/globals.css"),
   path.normalize("components/connect/brand-icons.tsx"),
   path.normalize("components/auth/icons.tsx"),
   path.normalize("components/inbox/email-body.tsx"),
 ]);
+
+const ALLOWLIST_PREFIXES = [
+  path.normalize("lib/email-templates"),
+];
 
 const HEX_COLOR_REGEX = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b/g;
 const RGB_COLOR_REGEX = /\brgba?\([^)]*\)/gi;
@@ -32,7 +37,7 @@ interface Violation {
 
 function scanFile(filePath: string, relativePath: string): Violation[] {
   const normalizedRel = path.normalize(relativePath);
-  if (ALLOWLIST_FILES.has(normalizedRel)) {
+  if (ALLOWLIST_FILES.has(normalizedRel) || ALLOWLIST_PREFIXES.some((p) => normalizedRel.startsWith(p))) {
     return [];
   }
 

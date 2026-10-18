@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, like } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { corsair } from "@/lib/corsair";
@@ -9,7 +9,7 @@ import {
   corsairPermissions,
 } from "@/db/corsair";
 import { conversations, chatMessages } from "@/db/conversation";
-import { user, session, account } from "@/db/auth";
+import { user, session, account, verification, verificationRateLimits } from "@/db/auth";
 import { userOnboarding } from "@/db/onboarding";
 import { aiUsage } from "@/db/ai-usage";
 import { waitlistEntries } from "@/db/waitlist";
@@ -30,6 +30,8 @@ export interface DeletedCounts {
   onboarding?: number;
   aiUsage?: number;
   waitlist?: number;
+  verifications?: number;
+  verificationRateLimits?: number;
   sessions?: number;
   accounts?: number;
   users?: number;
@@ -230,17 +232,35 @@ export async function deleteUserData(
       .returning({ id: aiUsage.id });
     deletedCounts.aiUsage = aiUsageRes.length;
 
-    // F. Waitlist entries
+    // F. Waitlist entries & Verification data
     const [userForData] = await tx
       .select({ email: user.email })
       .from(user)
       .where(eq(user.id, userId));
     if (userForData?.email) {
+      const cleanEmail = userForData.email.toLowerCase();
       const wlRes = await tx
         .delete(waitlistEntries)
-        .where(eq(waitlistEntries.email, userForData.email.toLowerCase()))
+        .where(eq(waitlistEntries.email, cleanEmail))
         .returning({ id: waitlistEntries.id });
       deletedCounts.waitlist = wlRes.length;
+
+      const verifRes = await tx
+        .delete(verification)
+        .where(like(verification.identifier, `%${cleanEmail}%`))
+        .returning({ id: verification.id });
+      deletedCounts.verifications = verifRes.length;
+
+      const rateRes = await tx
+        .delete(verificationRateLimits)
+        .where(
+          inArray(verificationRateLimits.key, [
+            `cooldown:${cleanEmail}`,
+            `email:${cleanEmail}`,
+          ])
+        )
+        .returning({ key: verificationRateLimits.key });
+      deletedCounts.verificationRateLimits = rateRes.length;
     }
   });
 
@@ -361,17 +381,35 @@ export async function deleteFullAccount(
       .returning({ id: account.id });
     deletedCounts.accounts = accRes.length;
 
-    // F. Waitlist entries
+    // F. Waitlist entries & Verification data
     const [userForFull] = await tx
       .select({ email: user.email })
       .from(user)
       .where(eq(user.id, userId));
     if (userForFull?.email) {
+      const cleanEmail = userForFull.email.toLowerCase();
       const wlRes = await tx
         .delete(waitlistEntries)
-        .where(eq(waitlistEntries.email, userForFull.email.toLowerCase()))
+        .where(eq(waitlistEntries.email, cleanEmail))
         .returning({ id: waitlistEntries.id });
       deletedCounts.waitlist = wlRes.length;
+
+      const verifRes = await tx
+        .delete(verification)
+        .where(like(verification.identifier, `%${cleanEmail}%`))
+        .returning({ id: verification.id });
+      deletedCounts.verifications = verifRes.length;
+
+      const rateRes = await tx
+        .delete(verificationRateLimits)
+        .where(
+          inArray(verificationRateLimits.key, [
+            `cooldown:${cleanEmail}`,
+            `email:${cleanEmail}`,
+          ])
+        )
+        .returning({ key: verificationRateLimits.key });
+      deletedCounts.verificationRateLimits = rateRes.length;
     }
 
     // G. User row

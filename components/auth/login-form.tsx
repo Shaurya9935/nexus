@@ -55,6 +55,19 @@ export function LoginForm({
     setLoading(false);
 
     if (error) {
+      const isUnverified =
+        error.code === "EMAIL_NOT_VERIFIED" ||
+        error.message?.toLowerCase().includes("verify") ||
+        error.message?.toLowerCase().includes("not verified");
+
+      if (isUnverified) {
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem("nexus_verify_email", email.trim().toLowerCase());
+        }
+        router.push("/verify-email?reason=unverified");
+        return;
+      }
+
       setFormError(error.message || "Invalid email or password.");
     } else {
       router.push("/dashboard");

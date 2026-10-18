@@ -29,7 +29,7 @@ const PROTECTED_API_PREFIXES = [
   "/api/admin",
 ];
 const AUTH_ROUTES = ["/login", "/register"];
-const PUBLIC_EXACT = ["/", "/api/auth", "/api/corsair", "/api/webhooks", "/api/waitlist"];
+const PUBLIC_EXACT = ["/", "/verify-email", "/api/auth", "/api/corsair", "/api/webhooks", "/api/waitlist"];
 
 function isProtected(pathname: string) {
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));

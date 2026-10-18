@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+const booleanEnv = (defaultValue: boolean) =>
+  z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .transform((val) => {
+      if (val === undefined || val === null || val === "") return defaultValue;
+      if (typeof val === "boolean") return val;
+      return val.toLowerCase() === "true" || val === "1";
+    });
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   APP_URL: z
@@ -49,8 +59,10 @@ const envSchema = z.object({
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean)
     ),
+  REQUIRE_EMAIL_VERIFICATION: booleanEnv(true),
+  EMAIL_DAILY_CAP: z.coerce.number().int().positive().default(100),
   RESEND_API_KEY: z.string().optional(),
-  MAIL_FROM: z.string().optional(),
+  MAIL_FROM: z.string().default("Nexus <no-reply@resend.dev>"),
   SIGNUP_MODE: z.enum(["open", "invite"]).default("open"),
   NEXT_PUBLIC_FEEDBACK_URL: z.string().optional(),
   NEXT_PUBLIC_FEEDBACK_EMAIL: z.string().optional(),
@@ -77,9 +89,23 @@ function validateEnv(): Env {
         GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "dummy-google-client-id",
         GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || "dummy-google-client-secret",
         SIGNUP_MODE: (process.env.SIGNUP_MODE as "open" | "invite") || "open",
+        REQUIRE_EMAIL_VERIFICATION: process.env.REQUIRE_EMAIL_VERIFICATION !== "false",
+        EMAIL_DAILY_CAP: 100,
+        MAIL_FROM: process.env.MAIL_FROM || "Nexus <no-reply@resend.dev>",
       });
     }
   }
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    parsed.data.REQUIRE_EMAIL_VERIFICATION &&
+    !parsed.data.RESEND_API_KEY
+  ) {
+    throw new Error(
+      "[FATAL] RESEND_API_KEY is required in production when REQUIRE_EMAIL_VERIFICATION is enabled"
+    );
+  }
+
   return parsed.data;
 }
 
@@ -99,4 +125,8 @@ export function isAllowedEmail(email?: string | null): boolean {
 
 export function isSignupOpen(): boolean {
   return env.SIGNUP_MODE === "open";
+}
+
+export function isEmailVerificationRequired(): boolean {
+  return env.REQUIRE_EMAIL_VERIFICATION;
 }

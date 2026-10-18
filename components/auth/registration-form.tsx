@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { CommandInboxIcon, AlertIcon, GoogleIcon } from "./icons";
 import { Field } from "./field";
@@ -12,13 +13,13 @@ export function RegistrationForm({
 }: {
   signupMode?: "open" | "invite";
 } = {}) {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -59,7 +60,10 @@ export function RegistrationForm({
     if (error) {
       setFormError(error.message || "Registration failed. Please try again.");
     } else {
-      setSuccess(true);
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("nexus_verify_email", email.trim().toLowerCase());
+      }
+      router.push("/verify-email");
     }
   }
 
@@ -86,40 +90,6 @@ export function RegistrationForm({
 
   function err(f: string) {
     return touched[f] ? errors[f] : undefined;
-  }
-
-  if (success) {
-    return (
-      <div className="flex flex-col items-center justify-center text-center px-2">
-        <div
-          className="w-11 h-11 rounded-full flex items-center justify-center mb-5"
-          style={{ background: "var(--brand-accent-subtle)" }}
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path
-              d="M4 10l4.5 4.5 7.5-8"
-              stroke="var(--brand-accent)"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-        <h2 className="text-[19px] font-semibold tracking-[-0.3px] text-[var(--text-primary)] mb-2">
-          Account created!
-        </h2>
-        <p className="text-[13.5px] text-[var(--text-secondary)] leading-relaxed max-w-[260px]">
-          Welcome aboard! You can now log in with{" "}
-          <span className="font-medium text-[var(--text-primary)]">{email}</span>.
-        </p>
-        <Link
-          href="/login"
-          className="mt-7 inline-flex items-center justify-center px-5 h-9 rounded-[7px] text-[13px] font-medium text-[var(--text-inverse)] bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-hover)] transition-colors focus-ring"
-        >
-          Proceed to log in
-        </Link>
-      </div>
-    );
   }
 
   return (

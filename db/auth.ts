@@ -5,6 +5,7 @@ import {
   boolean,
   index,
   uniqueIndex,
+  integer,
 } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
@@ -85,4 +86,21 @@ export const verification = pgTable(
   },
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
+
+export const verificationRateLimits = pgTable(
+  "verification_rate_limits",
+  {
+    key: text("key").primaryKey(),
+    count: integer("count").default(1).notNull(),
+    lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("verification_rate_limits_expires_at_idx").on(table.expiresAt),
+  ]
+);
+
+export type VerificationRateLimit = typeof verificationRateLimits.$inferSelect;
+export type NewVerificationRateLimit = typeof verificationRateLimits.$inferInsert;
+
 

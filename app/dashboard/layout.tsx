@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { env } from "@/lib/env";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { TourProvider } from "@/components/onboarding";
@@ -15,6 +16,10 @@ export default async function DashboardLayout({
 
   if (!session?.user) {
     redirect("/login");
+  }
+
+  if (env.REQUIRE_EMAIL_VERIFICATION && !session.user.emailVerified) {
+    redirect("/verify-email?reason=unverified");
   }
 
   return (
