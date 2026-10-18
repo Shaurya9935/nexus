@@ -1,5 +1,18 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { env } from "@/lib/env";
+
+function getBaseUrl(request: NextRequest): string {
+  if (env.APP_URL && !env.APP_URL.includes("localhost")) {
+    return env.APP_URL;
+  }
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto") || "https";
+  if (forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+  return request.nextUrl.origin || env.APP_URL || "http://localhost:3000";
+}
 
 // Optimistic auth check per https://docs.corsair.dev + Next proxy docs
 // Does not verify JWT in proxy (DB check is in server actions); only checks cookie presence to avoid flash of unauth content.
@@ -55,13 +68,13 @@ export function proxy(request: NextRequest) {
   }
 
   if (isProtected(pathname) && !hasSession) {
-    const url = new URL("/login", request.url);
+    const url = new URL("/login", getBaseUrl(request));
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
   if (isAuthRoute(pathname) && hasSession) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/dashboard", getBaseUrl(request)));
   }
 
   return NextResponse.next();
