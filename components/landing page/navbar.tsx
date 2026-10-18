@@ -1,21 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useScroll, useMotionValueEvent } from "framer-motion";
 import Link from "next/link";
 import { useTheme, SunIcon, MoonIcon } from "@/components/theme";
 import { Wordmark } from "./wordmark";
 import { GithubIcon } from "./icons";
 
+const subscribe = () => () => {};
+const getSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 export function Navbar() {
   const { scrollY } = useScroll();
   const [scrolled, setScrolled] = useState(false);
   const { resolvedTheme, toggleTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   useMotionValueEvent(scrollY, "change", (latest) => setScrolled(latest > 60));
 
@@ -56,6 +56,14 @@ export function Navbar() {
           </Link>
           <a
             href="#early-access"
+            onClick={(e) => {
+              e.preventDefault();
+              const el = document.getElementById("email");
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth" });
+                el.focus();
+              }
+            }}
             className="button button-primary button-small text-white text-[11px]"
           >
             Get early access

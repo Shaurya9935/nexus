@@ -432,3 +432,18 @@ export function ConnectIcon({ className = "", size = 14 }: { className?: string;
   );
 }
 
+export function UsersIcon({ className = "", size = 14 }: { className?: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
+      <path
+        d="M10.5 13.5v-1a2.5 2.5 0 00-2.5-2.5h-4a2.5 2.5 0 00-2.5 2.5v1M6.5 7a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM14.5 13.5v-1a2.49 2.49 0 00-1.8-2.4M10.5 2.1a2.5 2.5 0 010 4.8"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+

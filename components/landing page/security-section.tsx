@@ -11,6 +11,7 @@ export function SecurityBand() {
     <section
       id="security"
       className="mx-3 my-28 overflow-hidden rounded-[28px] bg-dark text-white md:mx-5"
+      style={{ backgroundColor: "var(--landing-dark)", color: "var(--on-accent)" }}
     >
       <div className="mx-auto grid max-w-[1200px] gap-16 px-6 py-20 md:grid-cols-[1.2fr_.8fr] md:px-12 md:py-28">
         <div>
@@ -35,7 +36,10 @@ export function SecurityBand() {
           </div>
         </div>
         <div className="flex items-center justify-center">
-          <div className="w-full max-w-sm rounded-[20px] bg-white p-2 text-ink shadow-2xl shadow-black/30">
+          <div
+            className="w-full max-w-sm rounded-[20px] bg-white p-2 text-ink shadow-2xl shadow-black/30"
+            style={{ backgroundColor: "var(--landing-surface-card)", color: "var(--landing-ink)" }}
+          >
             <ApprovalCard compact />
           </div>
         </div>

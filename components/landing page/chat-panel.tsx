@@ -13,7 +13,7 @@ export function ChatPanel({ active = false }: { active?: boolean }) {
     >
       <div className="flex items-center gap-2 border-b border-line px-3.5 py-2.5">
         <span className="size-2 rounded-full bg-[var(--status-success-text)]" />
-        <span className="text-[9px] font-semibold">Nexus assistant</span>
+        <span className="text-[9px] font-semibold text-ink">Nexus assistant</span>
       </div>
       <div className="p-3">
         {active && (

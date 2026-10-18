@@ -26,9 +26,10 @@ const PROTECTED_API_PREFIXES = [
   "/api/account",
   "/api/onboarding",
   "/api/mcp",
+  "/api/admin",
 ];
 const AUTH_ROUTES = ["/login", "/register"];
-const PUBLIC_EXACT = ["/", "/api/auth", "/api/corsair", "/api/webhooks"];
+const PUBLIC_EXACT = ["/", "/api/auth", "/api/corsair", "/api/webhooks", "/api/waitlist"];
 
 function isProtected(pathname: string) {
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
@@ -94,5 +95,6 @@ export const config = {
     "/api/account/:path*",
     "/api/onboarding/:path*",
     "/api/mcp/:path*",
+    "/api/admin/:path*",
   ],
 };

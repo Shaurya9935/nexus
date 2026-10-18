@@ -416,6 +416,13 @@
   --font-ui: var(--font-ui);
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
+
+  /* Landing page semantic tokens */
+  --color-dark: var(--landing-dark);
+  --color-ink: var(--landing-ink);
+  --color-muted: var(--landing-ink-62);
+  --color-line: var(--landing-line);
+  --color-tint: var(--landing-accent-tint);
 }
 
 body {

@@ -25,6 +25,7 @@ import {
   TrashIcon,
   AllMailIcon,
   SpamIcon,
+  UsersIcon,
 } from "./icons";
 import { useRouter, usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
@@ -1081,6 +1082,7 @@ function PrimaryNav({
   onGoBack,
   onSelectWorkspace,
   router,
+  isAdmin = false,
 }: {
   activeNav: string;
   activeWorkspace: WorkspaceId | null;
@@ -1091,7 +1093,9 @@ function PrimaryNav({
   onGoBack: () => void;
   onSelectWorkspace: (id: WorkspaceId) => void;
   router: ReturnType<typeof useRouter>;
+  isAdmin?: boolean;
 }) {
+  const pathname = usePathname();
   const [conversations, setConversations] = useState<SidebarConversation[]>([]);
 
   useEffect(() => {
@@ -1211,6 +1215,26 @@ function PrimaryNav({
           onClick={() => onSelectNav("command")}
         />
       </div>
+
+      {/* ── ADMIN (Admins only) ── */}
+      {isAdmin && (
+        <>
+          {!collapsed && <Divider />}
+          <div style={{ marginBottom: collapsed ? 14 : 8, marginTop: collapsed ? 0 : 4 }}>
+            <SectionLabel label="Admin" collapsed={collapsed} />
+            <NavBtn
+              icon={UsersIcon}
+              label="Waitlist"
+              active={activeNav === "admin-waitlist" || (pathname != null && pathname.startsWith("/dashboard/admin"))}
+              collapsed={collapsed}
+              onClick={() => {
+                onSelectNav("admin-waitlist");
+                router.push("/dashboard/admin/waitlist");
+              }}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1244,6 +1268,23 @@ export function Sidebar({
   const handleOpenAccount = () => {
     router.push("/dashboard/account");
   };
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/admin/status")
+      .then((res) => (res.ok ? res.json() : { isAdmin: false }))
+      .then((data) => {
+        if (active && data?.isAdmin) {
+          setIsAdmin(true);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const [internalActiveWorkspace, setInternalActiveWorkspace] = useState<WorkspaceId | null>(null);
   const [internalSecondaryOpen, setInternalSecondaryOpen] = useState(true);
 
@@ -1468,6 +1509,7 @@ export function Sidebar({
           onGoBack={onGoBack}
           onSelectWorkspace={handleSelectWorkspace}
           router={router}
+          isAdmin={isAdmin}
         />
 
         {/* Footer */}

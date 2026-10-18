@@ -2,7 +2,13 @@ import { z } from "zod";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  APP_URL: z.string().url().default("http://localhost:3000").transform((url) => url.replace(/\/+$/, "")),
+  APP_URL: z
+    .string()
+    .default("http://localhost:3000")
+    .transform((url) => {
+      const normalized = /^https?:\/\//i.test(url) ? url : `http://${url}`;
+      return normalized.replace(/\/+$/, "");
+    }),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   BETTER_AUTH_SECRET: z.string().min(1, "BETTER_AUTH_SECRET is required"),
   BETTER_AUTH_URL: z.string().optional().transform((url) => url ? url.replace(/\/+$/, "") : undefined),
@@ -23,6 +29,28 @@ const envSchema = z.object({
   GITHUB_CLIENT_SECRET: z.string().optional(),
   GITLAB_CLIENT_ID: z.string().optional(),
   GITLAB_CLIENT_SECRET: z.string().optional(),
+  ADMIN_EMAILS: z
+    .string()
+    .optional()
+    .default("")
+    .transform((s) =>
+      s
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean)
+    ),
+  ALLOWED_EMAILS: z
+    .string()
+    .optional()
+    .default("")
+    .transform((s) =>
+      s
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean)
+    ),
+  RESEND_API_KEY: z.string().optional(),
+  MAIL_FROM: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -52,3 +80,15 @@ function validateEnv(): Env {
 }
 
 export const env = validateEnv();
+
+export function isAdminEmail(email?: string | null): boolean {
+  if (!email || typeof email !== "string") return false;
+  const clean = email.trim().toLowerCase();
+  return env.ADMIN_EMAILS.includes(clean);
+}
+
+export function isAllowedEmail(email?: string | null): boolean {
+  if (!email || typeof email !== "string") return false;
+  const clean = email.trim().toLowerCase();
+  return env.ALLOWED_EMAILS.includes(clean);
+}

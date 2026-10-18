@@ -12,6 +12,7 @@ import { conversations, chatMessages } from "@/db/conversation";
 import { user, session, account } from "@/db/auth";
 import { userOnboarding } from "@/db/onboarding";
 import { aiUsage } from "@/db/ai-usage";
+import { waitlistEntries } from "@/db/waitlist";
 import { log } from "@/lib/logger";
 
 export interface RevocationResult {
@@ -28,6 +29,7 @@ export interface DeletedCounts {
   chatMessages: number;
   onboarding?: number;
   aiUsage?: number;
+  waitlist?: number;
   sessions?: number;
   accounts?: number;
   users?: number;
@@ -227,6 +229,19 @@ export async function deleteUserData(
       .where(eq(aiUsage.userId, userId))
       .returning({ id: aiUsage.id });
     deletedCounts.aiUsage = aiUsageRes.length;
+
+    // F. Waitlist entries
+    const [userForData] = await tx
+      .select({ email: user.email })
+      .from(user)
+      .where(eq(user.id, userId));
+    if (userForData?.email) {
+      const wlRes = await tx
+        .delete(waitlistEntries)
+        .where(eq(waitlistEntries.email, userForData.email.toLowerCase()))
+        .returning({ id: waitlistEntries.id });
+      deletedCounts.waitlist = wlRes.length;
+    }
   });
 
   log.info("[account] deleteUserData completed", {
@@ -346,7 +361,20 @@ export async function deleteFullAccount(
       .returning({ id: account.id });
     deletedCounts.accounts = accRes.length;
 
-    // F. User row
+    // F. Waitlist entries
+    const [userForFull] = await tx
+      .select({ email: user.email })
+      .from(user)
+      .where(eq(user.id, userId));
+    if (userForFull?.email) {
+      const wlRes = await tx
+        .delete(waitlistEntries)
+        .where(eq(waitlistEntries.email, userForFull.email.toLowerCase()))
+        .returning({ id: waitlistEntries.id });
+      deletedCounts.waitlist = wlRes.length;
+    }
+
+    // G. User row
     const userRes = await tx
       .delete(user)
       .where(eq(user.id, userId))
