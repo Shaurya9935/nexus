@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { log } from "@/lib/logger";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppCategory, IntegrationApp, ConnectUser } from "./connect-types";
@@ -67,6 +68,10 @@ export function ConnectWorkspace({
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const queryError = searchParams.get("error");
+  const [dismissedError, setDismissedError] = useState(false);
+  const [manualError, setManualError] = useState<string | null>(null);
+  const oauthError = dismissedError ? null : (manualError || queryError);
 
   const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
     setToast({ message, type });
@@ -146,7 +151,7 @@ export function ConnectWorkspace({
         log.warn("Failed to fetch live integration statuses", { error: err });
       });
 
-    // Check query params for OAuth redirects like ?connected=gmail
+    // Check query params for OAuth redirects like ?connected=gmail or ?error=access_denied
     const connectedParam = searchParams.get("connected");
     if (connectedParam) {
       setTimeout(() => {
@@ -181,12 +186,25 @@ export function ConnectWorkspace({
       try {
         showToast(`Preparing ${app.name} authorization…`, "info");
         const res = await fetch(app.connectEndpoint, { method: "POST" });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (data.connectUrl) {
           window.location.href = data.connectUrl;
           return;
         } else {
-          showToast(data.error || "Failed to generate authorization URL", "error");
+          const msg = (data.error || "").toLowerCase();
+          if (
+            res.status === 403 ||
+            msg.includes("denied") ||
+            msg.includes("tester") ||
+            msg.includes("testing") ||
+            msg.includes("test user") ||
+            msg.includes("access")
+          ) {
+            setDismissedError(false);
+            setManualError("access_denied");
+          } else {
+            showToast("Failed to initiate connection. Please try again.", "error");
+          }
         }
       } catch {
         showToast("Connection failed. Please check network.", "error");
@@ -451,6 +469,114 @@ export function ConnectWorkspace({
               </button>
             </div>
           </div>
+
+          {/* Friendly Google Beta Testing Notice */}
+          {oauthError && (
+            <div
+              role="status"
+              style={{
+                marginTop: 18,
+                padding: "16px 20px",
+                background: "var(--status-warning-bg)",
+                border: "1px solid var(--status-warning-border)",
+                borderRadius: 12,
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: "var(--warning-border)",
+                    color: "var(--status-warning-text)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    marginTop: 2,
+                  }}
+                >
+                  <svg width={18} height={18} viewBox="0 0 16 16" fill="none">
+                    <path
+                      d="M8 2.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM8 5v4m0 2.5h.01"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "var(--text-primary)",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Google Workspace Access Limited
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: "var(--text-secondary)",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Gmail and Calendar access is limited to approved testers while Nexus is in beta. Request access and we&apos;ll add you.
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 10, paddingLeft: 44 }}>
+                <Link
+                  href="/#early-access"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "7px 14px",
+                    background: "var(--accent-solid)",
+                    color: "var(--on-accent)",
+                    borderRadius: 7,
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    transition: "background 0.15s",
+                  }}
+                >
+                  Request access →
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDismissedError(true);
+                    setManualError(null);
+                    if (typeof window !== "undefined") {
+                      router.replace(window.location.pathname);
+                    }
+                  }}
+                  style={{
+                    padding: "7px 14px",
+                    background: "var(--surface-card)",
+                    border: "1px solid var(--border-strong)",
+                    borderRadius: 7,
+                    fontSize: 12.5,
+                    fontWeight: 500,
+                    color: "var(--text-primary)",
+                    cursor: "pointer",
+                    transition: "background 0.15s",
+                  }}
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Search and Category Filter Toolbar */}
           <div

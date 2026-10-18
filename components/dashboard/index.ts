@@ -13,3 +13,5 @@ export * from "./default-workspace";
 export * from "./calendar-view";
 export * from "./right-panel";
 export * from "./dashboard-view";
+export * from "./beta-banner";
+

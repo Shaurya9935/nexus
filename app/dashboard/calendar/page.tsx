@@ -50,7 +50,7 @@ export default function CalendarPage() {
     <div
       style={{
         display: "flex",
-        height: "100vh",
+        height: "100%",
         width: "100%",
         background: "var(--bg-page)",
         fontFamily: "var(--font-ui, 'DM Sans', system-ui, sans-serif)",

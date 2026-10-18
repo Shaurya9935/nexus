@@ -524,6 +524,9 @@ export async function getEventsInRange({
 }): Promise<CalendarEventResult[]> {
   // Try DB cache first
   const calendarAccountId = await getCalendarAccountId(tenantId);
+  if (!calendarAccountId) {
+    throw new Error("Google Calendar is not connected for this user");
+  }
 
   let events: CalendarEventResult[] = [];
 

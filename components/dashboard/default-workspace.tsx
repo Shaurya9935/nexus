@@ -147,7 +147,9 @@ export function DefaultWorkspace({
 
   const handleTriggerFocusAction = (action: View) => {
     if (action === "email") {
-      if (onSelectInbox) {
+      if (!isGmailConnected && onConnectGmail) {
+        onConnectGmail();
+      } else if (onSelectInbox) {
         onSelectInbox();
       } else if (emails.length > 0) {
         onSelectEmail(emails[0]);

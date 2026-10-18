@@ -51,6 +51,9 @@ const envSchema = z.object({
     ),
   RESEND_API_KEY: z.string().optional(),
   MAIL_FROM: z.string().optional(),
+  SIGNUP_MODE: z.enum(["open", "invite"]).default("open"),
+  NEXT_PUBLIC_FEEDBACK_URL: z.string().optional(),
+  NEXT_PUBLIC_FEEDBACK_EMAIL: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -73,6 +76,7 @@ function validateEnv(): Env {
         CORSAIR_DEV_API_KEY: process.env.CORSAIR_DEV_API_KEY || "ck_dev_dummy",
         GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "dummy-google-client-id",
         GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || "dummy-google-client-secret",
+        SIGNUP_MODE: (process.env.SIGNUP_MODE as "open" | "invite") || "open",
       });
     }
   }
@@ -91,4 +95,8 @@ export function isAllowedEmail(email?: string | null): boolean {
   if (!email || typeof email !== "string") return false;
   const clean = email.trim().toLowerCase();
   return env.ALLOWED_EMAILS.includes(clean);
+}
+
+export function isSignupOpen(): boolean {
+  return env.SIGNUP_MODE === "open";
 }

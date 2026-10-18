@@ -2,17 +2,23 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AuthLayout } from "@/components/auth/auth-layout";
 
 type Service = "gmail" | "calendar";
 
 export function ConnectClient() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [loadingService, setLoadingService] = useState<Service | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [oauthError, setOauthError] = useState<string | null>(() => searchParams.get("error"));
 
   const handleConnect = async (service: Service) => {
     setLoadingService(service);
     setError(null);
+    setOauthError(null);
     try {
       const endpoint =
         service === "gmail"
@@ -25,9 +31,18 @@ export function ConnectClient() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        throw new Error(
-          data?.error || `Failed to connect ${service === "gmail" ? "Gmail" : "Google Calendar"}`
-        );
+        const errStr = data?.error || "";
+        if (
+          response.status === 403 ||
+          errStr.toLowerCase().includes("denied") ||
+          errStr.toLowerCase().includes("tester") ||
+          errStr.toLowerCase().includes("testing")
+        ) {
+          setOauthError("access_denied");
+          setLoadingService(null);
+          return;
+        }
+        throw new Error(errStr || `Failed to connect ${service === "gmail" ? "Gmail" : "Google Calendar"}`);
       }
 
       const { connectUrl } = await response.json();
@@ -73,7 +88,112 @@ export function ConnectClient() {
           Link your Google services to sync threads, manage your calendar, and power Nexus with AI.
         </p>
 
-        {error && (
+        {oauthError ? (
+          <div
+            role="status"
+            style={{
+              width: "100%",
+              padding: "14px 16px",
+              background: "var(--status-warning-bg)",
+              border: "1px solid var(--status-warning-border)",
+              borderRadius: 10,
+              marginBottom: 16,
+              textAlign: "left",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 6,
+                  background: "var(--warning-border)",
+                  color: "var(--status-warning-text)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  marginTop: 2,
+                }}
+              >
+                <svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+                  <path
+                    d="M8 2.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM8 5v4m0 2.5h.01"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--text-primary)",
+                    marginBottom: 3,
+                  }}
+                >
+                  Google Workspace Access Limited
+                </div>
+                <div
+                  style={{
+                    fontSize: 12.5,
+                    color: "var(--text-secondary)",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Gmail and Calendar access is limited to approved testers while Nexus is in beta. Request access and we&apos;ll add you.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 38 }}>
+              <Link
+                href="/#early-access"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 12px",
+                  background: "var(--accent-solid)",
+                  color: "var(--on-accent)",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                Request access →
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setOauthError(null);
+                  setError(null);
+                  if (typeof window !== "undefined") {
+                    router.replace(window.location.pathname);
+                  }
+                }}
+                style={{
+                  padding: "6px 12px",
+                  background: "var(--surface-card)",
+                  border: "1px solid var(--border-strong)",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: "var(--text-primary)",
+                  cursor: "pointer",
+                }}
+              >
+                Try again
+              </button>
+            </div>
+          </div>
+        ) : error ? (
           <div
             style={{
               width: "100%",
@@ -89,7 +209,7 @@ export function ConnectClient() {
           >
             {error}
           </div>
-        )}
+        ) : null}
 
         <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
           {/* Gmail Card */}

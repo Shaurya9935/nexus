@@ -53,7 +53,19 @@ export function gmailTools(ctx: ToolContext): Tool<unknown>[] {
         }
         return JSON.stringify({ emails: trimmedEmails });
       } catch (err) {
-        return JSON.stringify({ error: String(err) });
+        const msg = err instanceof Error ? err.message : String(err);
+        if (
+          msg.toLowerCase().includes("not connected") ||
+          msg.toLowerCase().includes("not_connected") ||
+          msg.toLowerCase().includes("no account found")
+        ) {
+          return JSON.stringify({
+            error: "not_connected",
+            service: "Gmail",
+            message: "Gmail is not connected for this user.",
+          });
+        }
+        return JSON.stringify({ error: msg });
       }
     },
   });
@@ -94,7 +106,19 @@ export function gmailTools(ctx: ToolContext): Tool<unknown>[] {
         }
         return JSON.stringify({ emails: trimmedEmails });
       } catch (err) {
-        return JSON.stringify({ error: `Gmail search failed: ${String(err)}` });
+        const msg = err instanceof Error ? err.message : String(err);
+        if (
+          msg.toLowerCase().includes("not connected") ||
+          msg.toLowerCase().includes("not_connected") ||
+          msg.toLowerCase().includes("no account found")
+        ) {
+          return JSON.stringify({
+            error: "not_connected",
+            service: "Gmail",
+            message: "Gmail is not connected for this user.",
+          });
+        }
+        return JSON.stringify({ error: `Gmail search failed: ${msg}` });
       }
     },
   });
@@ -163,6 +187,17 @@ export function gmailTools(ctx: ToolContext): Tool<unknown>[] {
           return JSON.stringify({
             status: "waiting_approval",
             message: msg,
+          });
+        }
+        if (
+          msg.toLowerCase().includes("not connected") ||
+          msg.toLowerCase().includes("not_connected") ||
+          msg.toLowerCase().includes("no account found")
+        ) {
+          return JSON.stringify({
+            error: "not_connected",
+            service: "Gmail",
+            message: "Gmail is not connected for this user.",
           });
         }
         return JSON.stringify({ error: `Gmail send failed: ${msg}` });

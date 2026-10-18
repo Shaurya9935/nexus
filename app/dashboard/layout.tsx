@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { TourProvider } from "@/components/onboarding";
+import { BetaBanner } from "@/components/dashboard";
 
 export default async function DashboardLayout({
   children,
@@ -16,5 +17,31 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  return <TourProvider>{children}</TourProvider>;
+  return (
+    <TourProvider>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100vh",
+          width: "100%",
+          overflow: "hidden",
+        }}
+      >
+        <BetaBanner />
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            position: "relative",
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </TourProvider>
+  );
 }

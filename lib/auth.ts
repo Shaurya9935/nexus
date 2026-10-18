@@ -18,6 +18,9 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
+          if (env.SIGNUP_MODE === "open") {
+            return { data: user };
+          }
           const permitted = await isEmailPermittedToAccess(user.email);
           if (!permitted) {
             log.warn("[auth/signup] Blocked unapproved registration", {
@@ -34,6 +37,9 @@ export const auth = betterAuth({
     session: {
       create: {
         before: async (session) => {
+          if (env.SIGNUP_MODE === "open") {
+            return { data: session };
+          }
           if (session?.userId) {
             const [existingUser] = await db
               .select({ email: schema.user.email })

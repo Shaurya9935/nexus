@@ -8,7 +8,11 @@ import { CommandInboxIcon, AlertIcon, GoogleIcon } from "./icons";
 import { Field } from "./field";
 import { PasswordField } from "./password-field";
 
-export function LoginForm() {
+export function LoginForm({
+  signupMode = "open",
+}: {
+  signupMode?: "open" | "invite";
+} = {}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -256,6 +260,24 @@ export function LoginForm() {
           Sign up
         </Link>
       </p>
+
+      {/* Beta / Access Note */}
+      {signupMode === "open" ? (
+        <p className="text-center mt-5 text-[11.5px] text-[var(--text-muted)] leading-relaxed">
+          Nexus is in beta. You may run into bugs, and your feedback helps.
+        </p>
+      ) : (
+        <p className="text-center mt-5 text-[11.5px] text-[var(--text-muted)] leading-relaxed">
+          Nexus is in private beta.{" "}
+          <Link
+            href="/#early-access"
+            className="text-[var(--text-secondary)] underline underline-offset-2 hover:text-[var(--text-primary)] transition-colors focus-ring rounded-sm"
+          >
+            Request access on the home page
+          </Link>
+          .
+        </p>
+      )}
     </div>
   );
 }

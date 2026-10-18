@@ -43,6 +43,11 @@
   --accent-border: #C4BFF0;
   --on-accent: #FFFFFF;
 
+  /* Beta Banner Tokens */
+  --banner-bg: #F5F3FC;
+  --banner-text: #37307A;
+  --banner-border: #E5E1F8;
+
   /* Status & Semantic Feedback */
   --success: #16A34A;
   --success-hover: #15803D;
@@ -231,6 +236,11 @@
   --accent-tint-hover: rgba(139, 128, 240, 0.20);
   --accent-border: rgba(169, 163, 245, 0.25);
   --on-accent: #FFFFFF;
+
+  /* Beta Banner Tokens */
+  --banner-bg: #181622;
+  --banner-text: #D2CEF8;
+  --banner-border: #2B273F;
 
   /* Status & Semantic Feedback */
   --success: #5FC79A;
@@ -525,4 +535,10 @@ body {
   outline: 1px solid var(--focus-ring);
   outline-offset: 1px;
 }
+
+/* ── Zero-flash dismissal for Beta Banner ───────────────── */
+html.hide-beta-banner #beta-banner {
+  display: none !important;
+}
+
 

@@ -1431,6 +1431,11 @@ export async function getRecentEmails(
   tenantId: string,
   limit: number
 ): Promise<{ emails: EmailResult[]; stale: boolean }> {
+  const accountId = await getGmailAccountId(tenantId);
+  if (!accountId) {
+    throw new Error("Gmail is not connected for this user");
+  }
+
   let stale = false;
 
   try {

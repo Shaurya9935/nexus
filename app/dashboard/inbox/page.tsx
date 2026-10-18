@@ -366,7 +366,7 @@ function InboxInner() {
     <div
       style={{
         display: "flex",
-        height: "100vh",
+        height: "100%",
         width: "100%",
         background: "var(--bg-main)",
         fontFamily: "var(--font-ui, 'DM Sans', system-ui, sans-serif)",

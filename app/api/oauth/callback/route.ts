@@ -4,14 +4,6 @@ import { corsair } from "@/lib/corsair";
 import { log } from "@/lib/logger";
 import { env } from "@/lib/env";
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;");
-}
 
 function getAppBaseUrl(request: NextRequest): string {
   if (env.APP_URL && !env.APP_URL.includes("localhost")) {
@@ -30,33 +22,43 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
+  const baseUrl = getAppBaseUrl(request);
 
   if (error) {
-    return new NextResponse(
-      `<html><body><h2>Authorization failed</h2><p>${escapeHtml(error)}</p><a href="/connect">Back</a></body></html>`,
-      { status: 400, headers: { "Content-Type": "text/html" } }
-    );
+    log.warn("[oauth/callback] Provider authorization error", { error });
+    const statusFlag =
+      error === "access_denied" || error.toLowerCase().includes("denied")
+        ? "access_denied"
+        : "failed";
+    const redirectUrl = new URL(`/dashboard/connect?error=${statusFlag}`, baseUrl);
+    return NextResponse.redirect(redirectUrl);
   }
 
   if (!code || !state) {
-    return new NextResponse("<p>Missing code or state.</p><a href='/connect'>Back</a>", {
-      status: 400,
-      headers: { "Content-Type": "text/html" },
-    });
+    log.warn("[oauth/callback] Missing code or state parameters");
+    const redirectUrl = new URL("/dashboard/connect?error=invalid_request", baseUrl);
+    return NextResponse.redirect(redirectUrl);
   }
 
   try {
     const result = await corsair.manage.connect.oauthCallback({ code, state });
     const targetUrl = new URL(
       `/dashboard?connected=${encodeURIComponent(result.plugin)}`,
-      getAppBaseUrl(request)
+      baseUrl
     );
     return NextResponse.redirect(targetUrl);
   } catch (err) {
-    log.error("[oauth/callback] OAuth error", { error: err });
-    return new NextResponse(
-      `<html><body><h2>Authorization error</h2><p>Something went wrong during authorization. Please try again.</p><a href="/connect">Back</a></body></html>`,
-      { status: 500, headers: { "Content-Type": "text/html" } }
-    );
+    log.error("[oauth/callback] OAuth callback execution failed", { error: err });
+    const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+    const isDenied =
+      msg.includes("access_denied") ||
+      msg.includes("permission_denied") ||
+      msg.includes("403") ||
+      msg.includes("unauthorized") ||
+      msg.includes("not a test user");
+    const statusFlag = isDenied ? "access_denied" : "failed";
+    const redirectUrl = new URL(`/dashboard/connect?error=${statusFlag}`, baseUrl);
+    return NextResponse.redirect(redirectUrl);
   }
 }
+

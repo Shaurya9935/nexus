@@ -144,6 +144,11 @@ export async function submitWaitlistEntry({
  * - Returns false otherwise.
  */
 export async function isEmailPermittedToAccess(email?: string | null): Promise<boolean> {
+  // If open signup mode is active, everyone is permitted
+  if (env.SIGNUP_MODE === "open") {
+    return true;
+  }
+
   if (!email || typeof email !== "string") return false;
   const cleanEmail = email.trim().toLowerCase();
 

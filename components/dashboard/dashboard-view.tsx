@@ -11,7 +11,6 @@ import { CalendarView } from "./calendar-view";
 import { RightPanel } from "./right-panel";
 import {
   CURRENT_USER,
-  FOCUS_ITEMS,
 } from "./mock-data";
 import { useGmailThreads, GmailThread } from "@/hooks/use-gmail";
 import { useCalendarEvents } from "@/hooks/use-calendar";
@@ -218,30 +217,50 @@ export function DashboardView({
     let nextMeetingLabel = isCalendarActive ? "no upcoming meetings" : "calendar offline";
 
     if (isCalendarActive && calendarNextEvent?.startIso) {
-      const currentMs = nowMs ?? new Date(calendarNextEvent.startIso).getTime();
-      const diffMin = Math.max(
-        0,
-        Math.round(
-          (new Date(calendarNextEvent.startIso).getTime() - currentMs) / 60000
-        )
-      );
-      if (diffMin < 60) nextMeetingStr = `${diffMin}m`;
-      else nextMeetingStr = `${Math.floor(diffMin / 60)}h`;
-      nextMeetingLabel = `until ${calendarNextEvent.label}`;
+      const startMs = new Date(calendarNextEvent.startIso).getTime();
+      if (!isNaN(startMs)) {
+        const currentMs = nowMs ?? startMs;
+        const diffMin = Math.max(
+          0,
+          Math.round((startMs - currentMs) / 60000)
+        );
+        if (!isNaN(diffMin)) {
+          if (diffMin < 60) nextMeetingStr = `${diffMin}m`;
+          else nextMeetingStr = `${Math.floor(diffMin / 60)}h`;
+          nextMeetingLabel = `until ${calendarNextEvent.label}`;
+        }
+      }
+    }
+
+    if (!isGmailActive && !isCalendarActive) {
+      return [
+        {
+          count: "—",
+          label: "Connect Gmail to see your focus",
+          action: "email",
+        },
+        {
+          count: "—",
+          label: "Connect Calendar to track schedule",
+          action: "calendar",
+        },
+      ];
     }
 
     return [
       {
-        count: isGmailActive ? String(unreadCount || emails.length || 0) : "—",
-        label: isGmailActive ? "emails need attention" : "connect Gmail",
+        count: isGmailActive ? String(unreadCount) : "—",
+        label: isGmailActive ? "emails need attention" : "Connect Gmail to see your focus",
         action: "email",
       },
       {
         count: isCalendarActive ? String(meetingCount) : "—",
-        label: isCalendarActive ? (meetingCount === 1 ? "meeting today" : "meetings today") : "connect Calendar",
+        label: isCalendarActive ? (meetingCount === 1 ? "meeting today" : "meetings today") : "Connect Calendar to track schedule",
         action: "calendar",
       },
-      FOCUS_ITEMS[2] || { count: "2", label: "drafts waiting", action: "email" },
+      isGmailActive
+        ? { count: "0", label: "drafts waiting", action: "email" }
+        : { count: "—", label: "Connect Gmail for drafts", action: "email" },
       {
         count: nextMeetingStr,
         label: nextMeetingLabel,
@@ -256,7 +275,7 @@ export function DashboardView({
     <div
       style={{
         display: "flex",
-        height: "100vh",
+        height: "100%",
         width: "100%",
         background: "var(--bg-page)",
         fontFamily: "var(--font-ui, 'DM Sans', system-ui, sans-serif)",

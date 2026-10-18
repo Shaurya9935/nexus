@@ -39,7 +39,19 @@ export function calendarTools(ctx: ToolContext): Tool<unknown>[] {
         }
         return JSON.stringify({ events });
       } catch (err) {
-        return JSON.stringify({ error: `Calendar API failed: ${String(err)}` });
+        const msg = err instanceof Error ? err.message : String(err);
+        if (
+          msg.toLowerCase().includes("not connected") ||
+          msg.toLowerCase().includes("not_connected") ||
+          msg.toLowerCase().includes("no account found")
+        ) {
+          return JSON.stringify({
+            error: "not_connected",
+            service: "Google Calendar",
+            message: "Google Calendar is not connected for this user.",
+          });
+        }
+        return JSON.stringify({ error: `Calendar API failed: ${msg}` });
       }
     },
   });
@@ -131,6 +143,17 @@ export function calendarTools(ctx: ToolContext): Tool<unknown>[] {
           return JSON.stringify({
             status: "waiting_approval",
             message: msg,
+          });
+        }
+        if (
+          msg.toLowerCase().includes("not connected") ||
+          msg.toLowerCase().includes("not_connected") ||
+          msg.toLowerCase().includes("no account found")
+        ) {
+          return JSON.stringify({
+            error: "not_connected",
+            service: "Google Calendar",
+            message: "Google Calendar is not connected for this user.",
           });
         }
         return JSON.stringify({ error: `Calendar event creation failed: ${msg}` });
