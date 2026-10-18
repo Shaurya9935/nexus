@@ -76,7 +76,7 @@ export function TopBar({
     return "Nexus";
   };
 
-  const essentialConnections = connections.filter((c) => c.label !== "Command AI");
+  const essentialConnections = connections.filter((c) => c.label !== "Nexus AI");
   const allConnected = essentialConnections.length > 0 && essentialConnections.every((c) => c.ok);
   const anyConnected = essentialConnections.some((c) => c.ok);
   const statusColor = allConnected

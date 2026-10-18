@@ -321,7 +321,7 @@ export function DefaultWorkspace({
 
       if (!res.ok) {
         if (res.status === 401) {
-          reply = "You need to be logged in to use the Command AI assistant. Please log in and try again.";
+          reply = "You need to be logged in to use the Nexus AI assistant. Please log in and try again.";
         } else {
           reply = data.error || "Sorry, I ran into an issue processing your request. Please try again.";
         }
@@ -991,7 +991,7 @@ export function DefaultWorkspace({
                 }}
               >
                 <Dot color="var(--accent-solid)" size={6} />
-                <span>Command AI is thinking…</span>
+                <span>Nexus AI is thinking…</span>
               </div>
             )}
 

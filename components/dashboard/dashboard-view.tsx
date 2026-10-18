@@ -170,7 +170,7 @@ export function DashboardView({
   const liveConnections: ServiceConnection[] = useMemo(() => [
     { label: "Gmail", ok: isGmailActive },
     { label: "Google Calendar", ok: isCalendarActive },
-    { label: "Command AI", ok: true },
+    { label: "Nexus AI", ok: true },
   ], [isGmailActive, isCalendarActive]);
 
   const goBack = () => {

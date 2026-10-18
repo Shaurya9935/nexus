@@ -101,7 +101,7 @@ export function CommandSurface({
               handleSubmit();
             }
           }}
-          placeholder={loading ? "Command AI is processing…" : placeholder}
+          placeholder={loading ? "Nexus AI is processing…" : placeholder}
           rows={1}
           style={{
             flex: 1,
