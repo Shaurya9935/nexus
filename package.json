@@ -1,5 +1,5 @@
 {
-  "name": "command-inbox",
+  "name": "nexus",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -46,5 +46,8 @@
     "tsx": "^4.23.12",
     "typescript": "^5"
   },
+  "engines": {
+  "node": "24.x"
+},
   "packageManager": "pnpm@11.9.0"
 }
