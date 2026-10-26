@@ -260,7 +260,7 @@ export function Hero() {
             Get early access
           </a>
           <a
-            href="https://github.com"
+            href="https://github.com/Shaurya9935/nexus"
             className="button button-secondary"
             target="_blank"
             rel="noopener noreferrer"
