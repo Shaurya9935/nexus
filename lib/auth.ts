@@ -1,6 +1,8 @@
 import { betterAuth, APIError } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP } from "better-auth/plugins";
+import { createAuthEndpoint } from "better-auth/api";
+import { z } from "zod";
 import { eq } from "drizzle-orm";
 import * as schema from "../db/auth";
 import { db } from "./db";
@@ -11,11 +13,113 @@ import { sendEmail } from "./email";
 import { renderVerificationEmail } from "./email-templates/verification";
 import { renderResetPasswordEmail } from "./email-templates/reset-password";
 import { checkAndIncrementVerificationRateLimit } from "./verification-rate-limit";
+import {
+  registerPendingUser,
+  verifyPendingUser,
+  resendPendingRegistrationOTP,
+} from "./pending-registration";
+
+const pendingRegistrationPlugin = () => ({
+  id: "pending-registration",
+  endpoints: {
+    register: createAuthEndpoint(
+      "/pending-registration/register",
+      {
+        method: "POST",
+        body: z.object({
+          name: z.string(),
+          email: z.string(),
+          password: z.string(),
+        }),
+      },
+      async (ctx) => {
+        const clientIp =
+          ctx?.request?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          ctx?.request?.headers?.get("x-real-ip")?.trim() ||
+          ctx?.headers?.get?.("x-forwarded-for")?.split(",")[0]?.trim() ||
+          undefined;
+
+        const res = await registerPendingUser({
+          name: ctx.body.name,
+          email: ctx.body.email,
+          password: ctx.body.password,
+          clientIp,
+        });
+        return ctx.json(res);
+      }
+    ),
+    verify: createAuthEndpoint(
+      "/pending-registration/verify",
+      {
+        method: "POST",
+        body: z.object({
+          email: z.string(),
+          otp: z.string(),
+        }),
+      },
+      async (ctx) => {
+        const res = await verifyPendingUser({
+          email: ctx.body.email,
+          otp: ctx.body.otp,
+          ctx,
+        });
+        return ctx.json(res);
+      }
+    ),
+    resendOtp: createAuthEndpoint(
+      "/pending-registration/resend-otp",
+      {
+        method: "POST",
+        body: z.object({
+          email: z.string(),
+        }),
+      },
+      async (ctx) => {
+        const clientIp =
+          ctx?.request?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          ctx?.request?.headers?.get("x-real-ip")?.trim() ||
+          ctx?.headers?.get?.("x-forwarded-for")?.split(",")[0]?.trim() ||
+          undefined;
+
+        const res = await resendPendingRegistrationOTP({
+          email: ctx.body.email,
+          clientIp,
+        });
+        return ctx.json(res);
+      }
+    ),
+  },
+  rateLimit: [
+    {
+      pathMatcher(path: string) {
+        return path === "/pending-registration/register";
+      },
+      window: 60,
+      max: 20,
+    },
+    {
+      pathMatcher(path: string) {
+        return path === "/pending-registration/verify";
+      },
+      window: 60,
+      max: 30,
+    },
+    {
+      pathMatcher(path: string) {
+        return path === "/pending-registration/resend-otp";
+      },
+      window: 60,
+      max: 10,
+    },
+  ],
+});
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg", schema }),
   baseURL: env.APP_URL,
-  trustedOrigins: [env.APP_URL],
+  trustedOrigins: Array.from(
+    new Set([env.APP_URL, "http://localhost:3000", "http://localhost"])
+  ),
   advanced: {
     useSecureCookies: env.NODE_ENV === "production",
   },
@@ -90,8 +194,11 @@ export const auth = betterAuth({
     customRules: {
       "/sign-in/email": { window: 60, max: 10 },
       "/sign-up/email": { window: 60, max: 5 },
-      "/email-otp/send-verification-otp": { window: 60, max: 3 },
-      "/email-otp/verify-email": { window: 60, max: 10 },
+      "/pending-registration/register": { window: 60, max: 20 },
+      "/pending-registration/verify": { window: 60, max: 30 },
+      "/pending-registration/resend-otp": { window: 60, max: 10 },
+      "/email-otp/send-verification-otp": { window: 60, max: 5 },
+      "/email-otp/verify-email": { window: 60, max: 15 },
     },
   },
   emailVerification: {
@@ -103,6 +210,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
+    disableSignUp: true, // Prevent direct insertion of unverified users via legacy /sign-up/email
     autoSignIn: false,
     sendResetPassword: async ({ user, url }) => {
       const { html, text } = renderResetPasswordEmail({ url });
@@ -115,6 +223,7 @@ export const auth = betterAuth({
     },
   },
   plugins: [
+    pendingRegistrationPlugin(),
     emailOTP({
       otpLength: 6,
       expiresIn: 600, // 10 minutes

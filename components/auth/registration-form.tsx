@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth-client";
+import { authClient, registerPendingAccount } from "@/lib/auth-client";
 import { CommandInboxIcon, AlertIcon, GoogleIcon } from "./icons";
 import { Field } from "./field";
 import { PasswordField } from "./password-field";
@@ -49,9 +49,9 @@ export function RegistrationForm({
 
     setLoading(true);
 
-    const { error } = await authClient.signUp.email({
-      name,
-      email,
+    const { error } = await registerPendingAccount({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
       password,
     });
 

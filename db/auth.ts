@@ -100,7 +100,32 @@ export const verificationRateLimits = pgTable(
   ]
 );
 
+export const pendingRegistrations = pgTable(
+  "pending_registrations",
+  {
+    id: text("id").primaryKey(),
+    email: text("email").notNull().unique(),
+    name: text("name").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    otpHash: text("otp_hash").notNull(),
+    otpExpiresAt: timestamp("otp_expires_at", { withTimezone: true }).notNull(),
+    attemptCount: integer("attempt_count").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("pending_registrations_email_idx").on(table.email),
+    index("pending_registrations_expires_at_idx").on(table.otpExpiresAt),
+  ]
+);
+
 export type VerificationRateLimit = typeof verificationRateLimits.$inferSelect;
 export type NewVerificationRateLimit = typeof verificationRateLimits.$inferInsert;
+
+export type PendingRegistration = typeof pendingRegistrations.$inferSelect;
+export type NewPendingRegistration = typeof pendingRegistrations.$inferInsert;
 
 

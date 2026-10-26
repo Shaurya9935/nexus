@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { authClient } from "@/lib/auth-client";
+import { verifyPendingAccount, resendPendingAccountOtp } from "@/lib/auth-client";
 import { CommandInboxIcon, AlertIcon } from "./icons";
 
 function maskEmailAddress(email: string): string {
@@ -61,20 +61,13 @@ export function VerifyEmailForm() {
     setStatusMessage(null);
 
     try {
-      const res = await authClient.emailOtp.verifyEmail({
+      const res = await verifyPendingAccount({
         email,
         otp: code,
       });
 
       if (res.error) {
-        const errCode = res.error.code;
-        if (errCode === "TOO_MANY_ATTEMPTS") {
-          setErrorMessage("Too many attempts, request a new code.");
-        } else if (errCode === "INVALID_OTP" || errCode === "OTP_EXPIRED") {
-          setErrorMessage("Invalid or expired code.");
-        } else {
-          setErrorMessage(res.error.message || "Invalid or expired code.");
-        }
+        setErrorMessage(res.error.message || "Invalid or expired code.");
         setLoading(false);
         // Clear digits for clean re-entry on failure
         setDigits(["", "", "", "", "", ""]);
@@ -166,13 +159,15 @@ export function VerifyEmailForm() {
     setStatusMessage(null);
 
     try {
-      await authClient.emailOtp.sendVerificationOtp({
+      const res = await resendPendingAccountOtp({
         email,
-        type: "email-verification",
       });
 
-      // Non-enumerating response
-      setStatusMessage("If this email can be used, we've sent a code.");
+      if (res.error) {
+        setErrorMessage(res.error.message || "Failed to resend code.");
+      } else {
+        setStatusMessage("If this email can be used, we've sent a code.");
+      }
       setCountdown(60);
       setDigits(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
