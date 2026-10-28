@@ -46,4 +46,7 @@ All UI colors across `app/`, `components/`, `features/`, and `hooks/` MUST use s
    - `components/inbox/email-body.tsx`: Isolated email paper container that intentionally maintains fixed `#FFFFFF` card background with `#2D2C2A` text so formatted HTML emails render with authentic contrast in both modes.
 4. **Guardrail Linter**: Run `pnpm check:colors` to verify that all code adheres to design tokens. CI and pull requests must pass `pnpm check:colors` with exit code 0.
 
+## Task Completion
+When you finish a task, update docs/ROADMAP.md (move the item to the Done log) and README.md if user-visible behavior changed.
+
 

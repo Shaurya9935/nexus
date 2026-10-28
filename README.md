@@ -1,291 +1,169 @@
 # Nexus
 
-> **One command center for your digital life.**
+> One command for your inbox and calendar.
 
-Nexus is a production-hardened, AI-powered productivity workspace that unifies **Gmail** and **Google Calendar** into a single, intuitive interface. Instead of context-switching between tabs to locate threads, check availability, or organize schedules, Nexus provides a unified surface where users can **see, search, and act on their connected services through natural language**.
+Nexus is an AI-powered productivity workspace that unifies **Gmail** and **Google Calendar** into a single, cohesive command center. Designed for professionals who want to eliminate tab switching, Nexus lets users search, read, triage, draft, and schedule through natural language or direct visual controls.
 
----
+> [!NOTE]
+> **Beta Status**: Nexus is in active beta. Features are live and under continuous refinement. External access is currently subject to Google's OAuth testing-mode verification rules for Gmail and Calendar access.
 
-## 🚀 Key Highlights & Capabilities
-
-- **Natural Language Command Center**: Powered by OpenAI Agents SDK with strict tool schemas. Search inbox threads, query calendar schedules, compose emails, and organize meetings from a single `⌘K` command bar.
-- **Unified Email Workspace**: High-performance inbox with folder triage (Inbox, Starred, Drafts, Sent, Trash), unread badge counts, star toggling, and sanitized HTML email reading.
-- **Multi-View Calendar**: Interactive scheduling with **Day**, **Week** (hourly grid with live time indicator), **Month**, and **Agenda** views, complete with attendee RSVP badges and Google Meet integration.
-- **Zero-Latency Database Caching**: Reads are served instantly from local PostgreSQL tables with background incremental sync, bypassing external API rate limits.
-- **Human-in-the-Loop Safety**: High-impact actions (sending emails, modifying or deleting calendar events) require explicit approval cards displaying real recipients, subjects, and full bodies before execution.
-- **Production-Hardened Architecture**: Full tenant isolation, distributed serverless-safe sync locks, AES-256-GCM envelope encryption for OAuth tokens, prompt-injection guards, and strict spend protection.
+- **Production URL**: `TODO: Add production deployment URL`
+- **Repository**: [github.com/Shaurya9935/nexus](https://github.com/Shaurya9935/nexus)
 
 ---
 
-## 🏗️ Architecture & Layering
+## What Works Today
 
-Nexus follows a strict feature-based layered architecture designed for modularity, multi-tenant isolation, and high maintainability:
+- **Authentication & Access Control**: Email/password authentication with 6-digit OTP email verification via Resend, Google OAuth social login, configurable invite/open sign-up modes (`SIGNUP_MODE`), waitlist management with an admin dashboard, and full user data deletion.
+- **Unified Gmail Inbox**: Background incremental sync with PostgreSQL caching, multi-message thread viewer with parsed HTML rendering, starred thread view with live star toggling, and inbox search.
+- **Multi-View Calendar**: Interactive Day, Week (hourly grid with live time indicator), Month, and Agenda views with one-click Google Meet conferencing generation on event creation.
+- **Natural Language Command Center**: OpenAI Agents SDK runner with deterministic custom tools (`get_recent_emails`, `search_emails`, `get_calendar_events`, `send_email`, `create_calendar_event`) and generic Corsair API tool fallback.
+- **Human-in-the-Loop Safety**: Cautious permission gate requiring explicit interactive approval cards before sending emails or creating events; prompt-injection defenses with untrusted data boundaries.
+- **Usage & Rate Limits**: Per-user burst protection (8 msg/min), daily message limits (50 msg/day), and aggregate daily token tracking via the `ai_usage` table.
+- **Theming & Polish**: Semantic design tokens with warm charcoal dark mode, `pnpm check:colors` guardrail, guided onboarding tour, and interactive landing page.
+
+---
+
+## How It Works
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                       Client Layer                          │
-│   Next.js 16 (App Router) · React 19 · Semantic Design Tokens│
-│   Dashboard · Unified Inbox · Multi-View Calendar · Connect │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-┌──────────────────────────────▼──────────────────────────────┐
-│                    Proxy & Auth Boundary                    │
-│   proxy.ts (Session Verification) · Better Auth 1.7         │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-┌──────────────────────────────▼──────────────────────────────┐
-│                      API Route Layer                        │
-│   /api/ai · /api/gmail · /api/calendar · /api/conversations │
-│   /api/integrations · /api/account · /api/webhooks · /api/mcp│
-└──────┬───────────────────────┬───────────────────────┬──────┘
-       │                       │                       │
-┌──────▼──────┐         ┌──────▼──────┐         ┌──────▼──────┐
-│  AI Engine  │         │ Feature Svc │         │  Data Layer │
-│ OpenAI Agent│         │ Gmail Svc   │         │ PostgreSQL  │
-│ Strict Tools│         │ Calendar Svc│         │ Drizzle ORM │
-│ Instructions│         │ Account Svc │         │ Cache Tables│
-└──────┬──────┘         └──────┬──────┘         └─────────────┘
-       │                       │
-┌──────▼───────────────────────▼──────┐
-│       Corsair Integration Engine    │
-│  Multi-Tenant SDK Client (withTenant)│
-│  AES-256-GCM Envelope Encryption    │
-│  Cautious Permissions Pipeline      │
-└──────────────────┬──────────────────┘
-                   │
-        ┌──────────┴──────────┐
-        ▼                     ▼
-  Google Gmail API    Google Calendar API
+User / Browser
+      │
+      ▼
+Nexus (Next.js 16 + OpenAI Agents SDK)
+      │
+      ▼
+Corsair Integration Engine (Permissions & Envelope Encryption)
+      ├───────────────────────────────┐
+      ▼                               ▼
+Google Gmail API             Google Calendar API
 ```
 
-### Layering Rules
-- **Routes & Handlers** (`app/api/*`): Parse requests, authenticate sessions via Better Auth, invoke services or the agent, and return sanitized, generic error responses.
-- **AI Agent Runner** (`lib/ai/agent.ts`): Orchestrates prompt instructions, message history, tool execution, and approval queries.
-- **AI Tools** (`features/<service>/ai-tools.ts`): Define deterministic Zod schemas (`strictTool`) and delegate all database queries and external mutations to the service layer. Tools never make direct external API calls.
-- **Service Layer** (`features/<service>/server.ts`): Encapsulates all Corsair SDK operations, Drizzle ORM queries, and business logic. Functions accept `TenantCorsair` or session context and return strictly typed interfaces.
-- **Integrations & Data Access** (`lib/corsair.ts`, `lib/db.ts`, `db/*`): Core SDK clients, database connection pool, and table schemas.
+### Application Identity vs. Service Integrations
+
+```text
+┌──────────────────────────────────────┐       ┌──────────────────────────────────────┐
+│         Application Identity         │       │         Service Integrations         │
+│             Better Auth              │       │         Corsair OAuth Engine         │
+├──────────────────────────────────────┤       ├──────────────────────────────────────┤
+│ • User registration & passwords      │       │ • Google Workspace OAuth tokens      │
+│ • 6-digit email OTP (via Resend)     │  vs   │ • Per-account AES-256-GCM encryption │
+│ • Session cookies & route guard      │       │ • Cautious permission approvals      │
+│ • Waitlist gating & admin dashboard  │       │ • Background API sync & cache        │
+└──────────────────────────────────────┘       └──────────────────────────────────────┘
+```
 
 ---
 
-## 🛡️ Production Hardening & Security
+## Tech Stack
 
-Nexus has undergone end-to-end security hardening for hosted deployments:
-
-### 1. Privacy-Preserving Logging
-- Managed centrally through [`lib/logger.ts`](file:///Users/shauryagupta/Dev/Projects/command-inbox/lib/logger.ts) exporting `log.info`, `log.warn`, and `log.error`.
-- Automatic redaction of sensitive keys: `body`, `raw`, `snippet`, `content`, `message`, `subject`, `to`, `from`, `description`, `attendees`, `access_token`, `refresh_token`, `authorization`, `cookie`, `password`.
-- All logged strings are capped at 200 characters, and base64 email bodies are automatically stripped from error logs.
-- Agent telemetry logs tool execution metadata (name, duration, success/failure, error class, token counts) rather than user emails or chat content.
-
-### 2. Prompt-Injection Defenses & Safe Approvals
-- **Untrusted Data Boundary**: Email bodies and calendar notes are explicitly designated as untrusted data in [`lib/ai/instructions.ts`](file:///Users/shauryagupta/Dev/Projects/command-inbox/lib/ai/instructions.ts). The assistant is instructed never to follow instructions contained within email or calendar content.
-- **Minimal Model Tool Results**: Email list and search tools supply only necessary metadata (`threadId`, `from`, `subject`, `date`, and a 150-char snippet) to the model. Raw bodies and message headers are omitted.
-- **Human-in-the-Loop Confirmation**: Corsair permissions are configured with `mode: "cautious"` and explicit overrides covering `messages.send`, `drafts.send`, `messages.delete`, `messages.trash`, `messages.modify`, `threads.modify`, `threads.delete`, `events.create`, `events.update`, and `events.delete` (including through generic scripts).
-- **Comprehensive Approval Previews**: Approval cards render real recipients, subjects, and full message bodies for emails, and title, IST times, attendees, and locations for calendar events.
-- **Input Validation Caps**: Maximum 5 recipients per email and maximum 10 attendees per calendar event are enforced at tool and API boundaries.
-
-### 3. Strict Tenant Isolation
-- User identities are derived strictly from verified Better Auth session cookies (`session.user.id`), never from request bodies or headers.
-- All database queries across user-owned tables (`conversations`, `chat_messages`, `corsair_*`, `ai_usage`, `user_onboarding`) strictly filter by `userId` or `tenantId`.
-- The Corsair client is always instantiated per-user via `corsair.withTenant(session.user.id)`.
-- Conversation endpoints enforce ownership checks and return `404 Not Found` for unauthorized IDs.
-- Webhooks ([`app/api/webhooks/route.ts`](file:///Users/shauryagupta/Dev/Projects/command-inbox/app/api/webhooks/route.ts)) and MCP endpoints ([`app/api/mcp/route.ts`](file:///Users/shauryagupta/Dev/Projects/command-inbox/app/api/mcp/route.ts)) verify secrets/signatures and strictly reject untrusted tenant IDs supplied by callers.
-
-### 4. Serverless-Safe State & Distributed Sync Locks
-- Zero harmful in-memory state: In-memory stores were eliminated in favor of database-backed persistence in `corsair_permissions`.
-- Distributed sync locks (`acquireGmailSyncLock`, `acquireCalendarSyncLock`) with 2-minute TTLs and completion tracking prevent concurrent sync requests from duplicate processing across multiple serverless instances.
-
-### 5. AI Spend Protection & Rate Limiting
-- **Database Tracking**: Persistent `ai_usage` table records daily messages and token counts per user with atomic SQL upserts.
-- **Message Caps**: Reject user messages exceeding 2,000 characters.
-- **Burst Protection**: Limits users to 8 messages per minute.
-- **Daily Message Limit**: Enforces a per-user daily cap (default: 50 messages/day).
-- **Global Token Budget**: Evaluates aggregate daily token consumption across all users against `AI_DAILY_TOKEN_BUDGET_TOTAL` (default: 2,000,000 tokens/day) before applying soft caps.
-- **Auth Rate Limiting**: Better Auth endpoints enforce rate limiting on sign-in (10/min) and sign-up (5/min).
-
-### 6. Envelope Encryption at Rest
-- User OAuth credentials (`access_token`, `refresh_token`, `expires_at`) are never stored in plaintext.
-- Corsair provisions a distinct 32-byte Data Encryption Key (DEK) per account, which is encrypted using `scrypt` and AES-256-GCM via the master `CORSAIR_KEK` and stored in `corsair_accounts.dek`. Account configurations are encrypted using this DEK.
-
-### 7. Security Headers & Error Handling
-- Global security headers configured in [`next.config.ts`](file:///Users/shauryagupta/Dev/Projects/command-inbox/next.config.ts):
-  - `X-Content-Type-Options: nosniff`
-  - `Referrer-Policy: strict-origin-when-cross-origin`
-  - `X-Frame-Options: DENY`
-  - `Permissions-Policy: camera=(), geolocation=(), microphone=(self)`
-- API routes catch exceptions, log full details internally, and return sanitized, generic error responses to clients (`{ error: "Something went wrong" }`).
-- Application-wide error boundary ([`app/error.tsx`](file:///Users/shauryagupta/Dev/Projects/command-inbox/app/error.tsx)) and 404 handler ([`app/not-found.tsx`](file:///Users/shauryagupta/Dev/Projects/command-inbox/app/not-found.tsx)) adhere to semantic design tokens.
-
----
-
-## 🎨 Theming & Semantic Design Tokens
-
-All user interface styling strictly complies with semantic CSS variables (`var(--...)`) defined in [`app/globals.css`](file:///Users/shauryagupta/Dev/Projects/command-inbox/app/globals.css).
-
-- **Warm Charcoal Dark Mode**: Dark mode is activated via `.dark` on `<html>` using warm charcoal neutrals (`#121110`, `#151412`, `#171614`, `#1D1C1A`, `#21201D`, `#252421`, `#EEEBE5`) and warm hairline borders, avoiding cold blues or stark pitch blacks.
-- **Zero Hardcoded Colors**: No raw hex, `rgb()`, `rgba()`, or non-token Tailwind colors are permitted in components.
-- **Guardrail Linter**: Run `pnpm check:colors` to automatically verify 100% adherence to design tokens.
-
----
-
-## 🛠️ Tech Stack
-
-- **Framework**: Next.js 16 (App Router with Turbopack) & React 19
-- **Language**: TypeScript 5 (Strict Mode)
-- **Database**: PostgreSQL with Drizzle ORM
+- **Framework & Runtime**: Next.js 16 (App Router), React 19, TypeScript 5, Node.js 24.x
+- **Database & ORM**: PostgreSQL with Drizzle ORM
 - **Authentication**: Better Auth (with Drizzle PostgreSQL adapter)
-- **Integration Layer**: Corsair SDK (`@corsair-dev/gmail`, `@corsair-dev/googlecalendar`, `@corsair-dev/mcp`)
-- **AI / LLM Engine**: OpenAI Agents SDK & OpenAI API
+- **Integration Engine**: Corsair SDK (`@corsair-dev/gmail`, `@corsair-dev/googlecalendar`, `@corsair-dev/mcp`)
+- **AI Engine**: OpenAI Agents SDK (`@openai/agents`) with GPT-4o
+- **Email Delivery**: Resend
 - **Styling**: Tailwind CSS v4 & Semantic CSS Variables
 - **Package Manager**: pnpm
+- **Deployment**: Heroku with Heroku Postgres (see deployment notes)
 
 ---
 
-## 🚦 Getting Started
+## Getting Started
 
 ### Prerequisites
 
-- **Node.js**: v20.x or higher
-- **pnpm**: v10.x or higher
-- **PostgreSQL**: v15 or higher (local instance or cloud database like Neon, Supabase, RDS)
-- **Google Cloud Console Project**: Configured for OAuth with Gmail and Google Calendar API scopes.
-- **OpenAI API Key**: For AI assistant capabilities.
+- **Node.js**: `24.x` (enforced via `package.json` engines)
+- **pnpm**: `10.x` or higher
+- **Docker**: For running a local PostgreSQL instance (or an external PostgreSQL URL)
+- **API Keys**: Google Cloud OAuth Client (Gmail & Calendar scopes), OpenAI API key, Resend API key
 
-### 1. Clone & Install Dependencies
+### 1. Clone & Install
 
 ```bash
-git clone https://github.com/your-username/command-inbox.git
-cd command-inbox
+git clone https://github.com/Shaurya9935/nexus.git
+cd nexus
 pnpm install
 ```
 
-### 2. Configure Environment Variables
+### 2. Environment Configuration
 
-Copy the example environment file:
+Copy the example environment configuration:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Fill in your configuration values:
+Configure the following variable categories in `.env.local` (variable names only; never commit secrets):
+- `APP_URL` / `BETTER_AUTH_URL`: Canonical public origin (e.g. `http://localhost:3000`).
+- `DATABASE_URL`: Connection string to PostgreSQL instance.
+- `BETTER_AUTH_SECRET`: Secret key (min 32 characters) for signing auth sessions.
+- `CORSAIR_KEK`: 32-byte Base64-encoded Key Encryption Key for at-rest token encryption.
+- `CORSAIR_DEV_API_KEY` / `CORSAIR_DEV_SIGNING_SECRET`: Corsair integration API credentials.
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: Google OAuth credentials with Gmail and Calendar scopes.
+- `OPENAI_API_KEY`: API key powering the AI agent runner.
+- `RESEND_API_KEY` / `MAIL_FROM`: Resend credentials for 6-digit email OTP verification.
+- `REQUIRE_EMAIL_VERIFICATION`: Set to `true` to mandate OTP verification on registration.
+- `SIGNUP_MODE` / `ADMIN_EMAILS` / `ALLOWED_EMAILS`: Control open vs invite registration and admin access.
+- `AI_DAILY_MESSAGE_LIMIT` / `AI_BURST_MESSAGE_LIMIT` / `AI_DAILY_TOKEN_BUDGET_TOTAL`: AI spend caps.
 
-```dotenv
-# App URL
-APP_URL=http://localhost:3000
-
-# Database
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/command-inbox
-
-# Better Auth
-BETTER_AUTH_SECRET=your-secure-auth-secret-min-32-chars
-BETTER_AUTH_URL=http://localhost:3000
-
-# Corsair Engine
-CORSAIR_KEK=your-base64-encoded-32-byte-key
-CORSAIR_DEV_API_KEY=ck_dev_your_api_key
-CORSAIR_DEV_SIGNING_SECRET=your-signing-secret
-
-# Google OAuth (Gmail & Google Calendar)
-GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-
-# OpenAI Key
-OPENAI_API_KEY=sk-proj-your-openai-api-key
-
-# Spend Protection & Limits (Optional defaults provided)
-AI_DAILY_MESSAGE_LIMIT=50
-AI_BURST_MESSAGE_LIMIT=8
-AI_DAILY_TOKEN_BUDGET_TOTAL=2000000
-
-# Optional Webhook & MCP Secrets
-WEBHOOK_SECRET=your-webhook-secret
-MCP_SECRET=your-mcp-bearer-token
-```
-
-> [!NOTE]
-> Environment variables are validated at startup with Zod via [`lib/env.ts`](file:///Users/shauryagupta/Dev/Projects/command-inbox/lib/env.ts). In production, missing required keys will trigger an immediate fail-fast error without leaking secret values.
-
-### 3. Initialize Database & Run Migrations
+### 3. Database Migration & Development
 
 ```bash
-# Run Drizzle migrations
+# Run database migrations
 pnpm db:migrate
 
-# (Optional) Open Drizzle Studio to inspect database tables
-pnpm db:studio
-```
-
-### 4. Start Development Server
-
-```bash
+# Start local Next.js development server
 pnpm dev
 ```
 
-Visit [http://localhost:3000](http://localhost:3000) to create an account, connect your Google services, and access your dashboard.
-
----
-
-## 📦 Production Deployment
-
-### 1. Build Verification
-
-Verify that typechecking, linting, color tokens, and production bundling pass:
+### 4. Verification Commands
 
 ```bash
-# Typecheck
-npx tsc --noEmit
-
-# Lint
-pnpm lint
-
-# Semantic token verification
-pnpm check:colors
-
-# Optimized Next.js production build
-pnpm build
+pnpm lint          # Runs ESLint checks
+pnpm check:colors   # Enforces semantic design tokens (no hardcoded colors)
 ```
 
-### 2. Start Production Server
+---
 
-```bash
-pnpm start
-```
+## Project Structure
 
-### 3. Serverless & Containerized Environments
+- `app/`: Next.js App Router pages, layout trees, error boundaries, and API route handlers (`app/api/*`).
+- `features/<service>/`: Domain feature modules (Gmail, Calendar) containing AI tools, schemas, and server services.
+- `lib/ai/`: Core agent runner, instructions, prompt-injection defenses, and pending action queries.
+- `lib/ai/tools/`: Central tool registry aggregating feature-specific tools and Corsair generic tool bridges.
+- `components/`: UI components (inbox, calendar, dashboard, auth, theme, onboarding, landing page).
+- `db/`: Drizzle ORM schema definitions (auth, corsair, ai_usage, waitlist, onboarding).
 
-When deploying to Vercel, Railway, Render, or Docker:
-1. Ensure `DATABASE_URL` connects to a pooled PostgreSQL instance.
-2. Set `NODE_ENV=production` and `APP_URL=https://your-domain.com`.
-3. Provide `CORSAIR_KEK`, `BETTER_AUTH_SECRET`, and OAuth secrets in your platform environment settings.
-4. Run `pnpm db:migrate` in your deployment or release pipeline before starting web instances.
+### Layering Rule
+Code strictly adheres to:
+`Route / API Handler (app/api/*)` &rarr; `AI Tools (features/*/ai-tools.ts)` &rarr; `Service Layer (features/*/server.ts)` &rarr; `Corsair SDK / Drizzle DB`
 
 ---
 
-## 📋 Available Scripts
+## Security & Privacy
 
-| Command | Description |
-| :--- | :--- |
-| `pnpm dev` | Starts local Next.js development server with hot-reload |
-| `pnpm build` | Compiles optimized production bundle using Turbopack |
-| `pnpm start` | Boots production server |
-| `pnpm lint` | Runs ESLint checks |
-| `pnpm check:colors` | Scans codebase to enforce semantic design tokens and prevent hardcoded colors |
-| `pnpm db:generate` | Generates new SQL migration files from Drizzle schema definitions |
-| `pnpm db:migrate` | Applies pending Drizzle migrations to PostgreSQL database |
-| `pnpm db:studio` | Launches visual Drizzle Studio database inspector |
+- **Minimal Scopes & Storage**: Nexus stores user profile details and caches essential email/calendar metadata locally in PostgreSQL for sub-second retrieval.
+- **Envelope Encryption**: Third-party OAuth tokens are encrypted at rest with AES-256-GCM using per-account Data Encryption Keys (DEKs) wrapped by `CORSAIR_KEK`.
+- **Human Approval Required**: Outbound actions (sending emails, creating calendar events) require explicit confirmation via interactive cards before execution.
+- **User Data Deletion**: Users can purge their cached data and revoke Google OAuth tokens at any time via Account settings.
 
 ---
 
-## 🗺️ Roadmap & Future Scope
+## Roadmap
 
-- [ ] **Cross-Platform Connectors**: Expand beyond Google Workspace to Microsoft 365 (Outlook), Slack, Notion, and GitHub.
-- [ ] **Unified Cross-Service Search**: Hybrid vector search (`pgvector`) and full-text index across email threads, calendar events, and notes.
-- [ ] **Proactive Morning Briefings**: Automated daily summaries of urgent emails, schedule density, and upcoming meetings.
-- [ ] **Schedule Conflict Assistant**: Natural language availability queries (*"When am I free for a 45-minute call with Sarah on Thursday?"*).
-- [ ] **Action Item Extraction**: Automatic detection of tasks and deadlines from unread correspondence surfaced directly to the dashboard.
+1. **Mail Triage & Insights**: Structured classification (needs reply, FYI, newsletter) and action extraction.
+2. **Reply Reminders & Follow-Ups**: Proactive background alerts for unanswered emails via Resend and in-app notifications.
+3. **Context-Aware Mini Bot**: Instant suggestion chips and contextual assistance tailored to the active thread or event.
+4. **Native Calendar Event Management**: Event editing modal and delete confirmation dialogs with undo support.
+5. **Connector Expansion**: Dedicated integrations for GitHub and Notion.
+
+For detailed priorities, bug triage, and task tracking, see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ---
 
-## 📜 License
+## Contributing & License
 
-Private beta — all rights reserved.
+Contributions are welcome. Please ensure all modifications pass `pnpm lint` and `pnpm check:colors` before opening a pull request.
+
+Private beta &mdash; all rights reserved.
